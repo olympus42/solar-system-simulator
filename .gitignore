@@ -1,0 +1,10 @@
+# NASA SPICE kernels are downloaded on first run (about 32 MB). Don't commit them.
+kernels/*.bsp
+kernels/*.tls
+kernels/*.tpc
+kernels/*.part
+
+# Generated output
+*.gif
+__pycache__/
+.venv/

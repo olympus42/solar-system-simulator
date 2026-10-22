@@ -80,13 +80,15 @@ def initial_state():
 # 2. The physics engine
 # ----------------------------------------------------------------------
 
-def accelerations(pos, masses):
+def accelerations(pos, masses, G=G):
     """Return the gravitational acceleration on every body from every other.
 
     This is the heart of the simulator. For each pair of bodies we apply
     Newton's law of gravitation. The acceleration on body i is:
 
         a_i = sum over j != i of  G * m_j * (r_j - r_i) / |r_j - r_i|^3
+
+    Works in 2D or 3D: `pos` has one row per body and one column per axis.
     """
     n = len(masses)
     acc = np.zeros_like(pos)
@@ -100,34 +102,38 @@ def accelerations(pos, masses):
     return acc
 
 
-def simulate(dt, n_steps):
+def simulate(dt, n_steps, state=None, G=G):
     """Integrate the whole system forward using velocity-Verlet.
 
     Velocity-Verlet is used instead of naive Euler because it conserves energy
     over long runs -- essential for a physically believable orbit. We record the
     full trajectory so we can plot it and check the physics afterwards.
-    """
-    names, masses, pos, vel = initial_state()
-    n = len(names)
 
-    trajectory = np.zeros((n_steps, n, 2))
+    By default the planets start on circles (see `initial_state`). Pass
+    `state=(names, masses, pos, vel)` to start from anywhere else -- for example
+    the real positions NASA measures, loaded by `nasa_spice.py`.
+    """
+    names, masses, pos, vel = state if state is not None else initial_state()
+    n, dims = pos.shape
+
+    trajectory = np.zeros((n_steps, n, dims))
     energy = np.zeros(n_steps)
 
-    acc = accelerations(pos, masses)
+    acc = accelerations(pos, masses, G)
     for step in range(n_steps):
         # velocity-Verlet update
         pos = pos + vel * dt + 0.5 * acc * dt**2
-        new_acc = accelerations(pos, masses)
+        new_acc = accelerations(pos, masses, G)
         vel = vel + 0.5 * (acc + new_acc) * dt
         acc = new_acc
 
         trajectory[step] = pos
-        energy[step] = total_energy(pos, vel, masses)
+        energy[step] = total_energy(pos, vel, masses, G)
 
     return names, masses, trajectory, energy
 
 
-def total_energy(pos, vel, masses):
+def total_energy(pos, vel, masses, G=G):
     """Total mechanical energy (kinetic + potential). Should stay ~constant."""
     kinetic = 0.5 * np.sum(masses * np.sum(vel**2, axis=1))
     potential = 0.0
